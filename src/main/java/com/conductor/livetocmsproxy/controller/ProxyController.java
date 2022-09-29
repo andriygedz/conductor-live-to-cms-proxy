@@ -16,8 +16,10 @@ public class ProxyController {
     private final ProxyService proxyService;
 
     @GetMapping("/article")
-    public ArticleDto getArticle(GetArticleDto getArticleDto){
-        return proxyService.getArticle(getArticleDto);
+    public ArticleDto getArticle(String wpHost,
+                                 long articleId,
+                                 boolean isPost){
+        return proxyService.getArticle(new GetArticleDto(wpHost, articleId, isPost));
     }
 
     @PostMapping("/article")
