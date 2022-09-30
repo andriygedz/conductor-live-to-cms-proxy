@@ -5,24 +5,21 @@ import com.conductor.livetocmsproxy.controller.dto.GetArticleDto;
 import com.conductor.livetocmsproxy.controller.dto.UpdateArticleDto;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
-import org.apache.tomcat.util.codec.binary.Base64;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URL;
-import java.nio.charset.Charset;
 
 @Service
 @RequiredArgsConstructor
 public class ProxyService {
-    private final RestTemplate restTemplate;
+    private final RestTemplateBuilder restTemplateBuilder;
 
     @SneakyThrows
     public ArticleDto getArticle(GetArticleDto getArticleDto) {
+        RestTemplate restTemplate = restTemplateBuilder.build();
         ResponseEntity<Article> entity = restTemplate.getForEntity(createGetArticleUri(getArticleDto), Article.class);
         if (entity.getStatusCode().is2xxSuccessful()) {
             Article article = entity.getBody();
@@ -47,21 +44,11 @@ public class ProxyService {
 
     public void updateArticle(UpdateArticleDto updateArticleDto){
         ArticleDto requestBody = new ArticleDto(updateArticleDto.title(), updateArticleDto.content());
-        HttpHeaders headers = createHeaders(updateArticleDto.user(), updateArticleDto.user());
         String url = createUpdateArticleUri(updateArticleDto);
-        ResponseEntity<Void> entity = restTemplate.exchange(url, HttpMethod.POST, new HttpEntity<>(requestBody, headers), Void.class);
+        RestTemplate restTemplate = restTemplateBuilder.basicAuthentication(updateArticleDto.user(), updateArticleDto.password()).build();
+        ResponseEntity<Void> entity = restTemplate.postForEntity(url, requestBody, Void.class);
         if (!entity.getStatusCode().is2xxSuccessful()) {
             throw new IllegalArgumentException("Fail to communicate with service" + entity.getStatusCodeValue());
         }
-    }
-
-    HttpHeaders createHeaders(String username, String password){
-        return new HttpHeaders() {{
-            String auth = username + ":" + password;
-            byte[] encodedAuth = Base64.encodeBase64(
-                    auth.getBytes(Charset.forName("US-ASCII")) );
-            String authHeader = "Basic " + new String( encodedAuth );
-            set( "Authorization", authHeader );
-        }};
     }
 }
